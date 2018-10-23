@@ -6,7 +6,12 @@
     <artifactId>colorblind-message-encrypter-createplatehandler</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
-    <name>lambda-java-example</name>
+    <name>lambda-java-ishihara</name>
+	
+	<properties>
+		<maven.compiler.source>1.6</maven.compiler.source>
+		<maven.compiler.target>1.6</maven.compiler.target>
+    </properties>
 
     <dependencies>
         <dependency>

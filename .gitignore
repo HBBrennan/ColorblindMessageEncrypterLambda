@@ -65,5 +65,12 @@ target\n .idea
 
 *.iml
 
+#Me
 .idea/
 target/
+.classpath
+.factorypath
+.project
+.settings/
+outputSamTemplate.yaml
+
