@@ -1,50 +1,46 @@
 package ColorblindMessageEncrypter;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.BufferedReader;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.util.Base64;
 
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.*;
+import lombok.Cleanup;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
+import javax.imageio.ImageIO;
+
+import static java.lang.Math.min;
 
 public class CreatePlateHandler implements RequestStreamHandler {
     JSONParser parser = new JSONParser();
+    private String DST_BUCKET = System.getenv("S3_BUCKET");
+
     public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {
-
         LambdaLogger logger = context.getLogger();
-        logger.log("Loading Java Lambda handler of ColorblindMessageEncrypter");
+        logger.log("Loading Java Lambda handler of ColorblindMessageEncrypter\n");
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        @Cleanup BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         JSONObject responseJson = new JSONObject();
-        String text;
-        Long width, height, color;
-        String responseCode = "200";
-
+        IshiharaParams params = new IshiharaParams();
+        JSONObject event = null;
         try {
-            JSONObject event = (JSONObject)parser.parse(reader);
+            event = (JSONObject)parser.parse(reader);
+            logger.log("Received event: " + event.toJSONString() + "\n");
             if (event.get("queryStringParameters") != null) {
                 JSONObject qps = (JSONObject)event.get("queryStringParameters");
-                if ( qps.get("name") != null) {
-                    text = (String)qps.get("text");
-                }
+                if ( qps.get("text") != null) {
 
-                if (qps.get("width") != null) {
-                    width =(Long) qps.get("width");
-                }
-                if (qps.get("height") != null) {
-                    height = (Long) qps.get("height");
-                }
-                if (qps.get("color") != null) {
-                    color = (Long) qps.get("color");
                 }
             }
 
@@ -62,32 +58,81 @@ public class CreatePlateHandler implements RequestStreamHandler {
 
             if (event.get("body") != null) {
                 JSONObject body = (JSONObject)parser.parse((String)event.get("body"));
-                if ( body.get("time") != null) {
+                if ( body.get("text") != null) {
+                    params.text = (String)body.get("text");
+                    logger.log("Found string: " + params.text);
                 }
             }
-
-            //Create image
-
-            JSONObject responseBody = new JSONObject();
-            responseBody.put("input", event.toJSONString());
-            responseBody.put("image", "https://s3-us-west-2.amazonaws.com/colorblind-message-encrypter-plates/Test.PNG");
-
-            JSONObject headerJson = new JSONObject();
-            //headerJson.put("x-custom-header", "my custom header value");
-
-            responseJson.put("isBase64Encoded", false);
-            responseJson.put("statusCode", responseCode);
-            responseJson.put("headers", headerJson);
-            responseJson.put("body", responseBody.toString());
 
         } catch(ParseException pex) {
             responseJson.put("statusCode", "400");
             responseJson.put("exception", pex);
+            if (event != null)
+                responseJson.put("input", event.toJSONString());
+        }
+
+        if (params.text != "") {
+            handleSuccessfulParse(logger, responseJson, params);
+        } else {
+            handleFailedParse(logger, responseJson);
         }
 
         logger.log(responseJson.toJSONString());
-        OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
+        @Cleanup OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
         writer.write(responseJson.toJSONString());
-        writer.close();
+    }
+
+    void handleFailedParse(LambdaLogger logger, JSONObject responseJson) {
+
+    }
+
+    void handleSuccessfulParse(LambdaLogger logger, JSONObject responseJson, IshiharaParams params)
+    {
+        //Create image
+        IshiharaGenerator ishiharaGenerator = new IshiharaGenerator();
+        BufferedImage image = ishiharaGenerator.CreateImage(params.text, new Rectangle(params.requestedWidth, params.requestedHeight), false, 4);
+        String dstKey =
+                Base64.getEncoder().withoutPadding().encodeToString(params.text.getBytes());
+        dstKey = dstKey.substring(0, min(128, dstKey.length()));
+
+        //Check database if this image has already been generated
+
+        AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        try {
+            ImageIO.write(image, "png", os);
+        } catch (IOException e) {
+            logger.log(e.toString());
+        }
+
+        InputStream is = new ByteArrayInputStream(os.toByteArray());
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength((long)os.size());
+        meta.setContentType("image/png");
+
+        logger.log("Writing to: " + DST_BUCKET + "/" + dstKey + "\n");
+        JSONObject responseBody = new JSONObject();
+        try {
+            s3Client.putObject(DST_BUCKET, dstKey, is, meta);
+            logger.log("Successfully created Ishihara plate with uploaded to " + DST_BUCKET + "/" + dstKey + "\n");
+            String resultUrl = "https://s3-us-west-2.amazonaws.com/"
+                    + DST_BUCKET
+                    + "/"
+                    + dstKey;
+            responseBody.put("image", resultUrl);
+        }
+        catch (SdkClientException e) {
+            logger.log(e.toString());
+            responseBody.put("error", "Failed to upload image to S3");
+        }
+
+        JSONObject headerJson = new JSONObject();
+        headerJson.put("Access-Control-Allow-Origin", "*");
+
+        responseJson.put("isBase64Encoded", false);
+        responseJson.put("statusCode", "201");
+        responseJson.put("headers", headerJson);
+        responseJson.put("body", responseBody.toString());
+        responseJson.put("Content-Type", "application/json");
     }
 }

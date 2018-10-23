@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Creates an Ishihara Test plate from parameters
+Resources:
+  TimeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ColorblindMessageEncrypter.CreatePlateHandler::handleRequest
+      Runtime: Java 8
+      CodeUri: ./
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            Method: post
