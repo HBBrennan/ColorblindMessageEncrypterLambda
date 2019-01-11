@@ -1,0 +1,128 @@
+{
+    "path": "/encrypttext",
+    "headers": {
+        "Accept": "application/json",
+        "CloudFront-Viewer-Country": "US",
+        "CloudFront-Forwarded-Proto": "https",
+        "CloudFront-Is-Tablet-Viewer": "false",
+        "origin": "http://colorblind-message-encrypter.s3-website-us-west-2.amazonaws.com",
+        "CloudFront-Is-Mobile-Viewer": "false",
+        "Referer": "http://colorblind-message-encrypter.s3-website-us-west-2.amazonaws.com/",
+        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0",
+        "X-Forwarded-Proto": "https",
+        "CloudFront-Is-SmartTV-Viewer": "false",
+        "Host": "tbrz9z67od.execute-api.us-west-2.amazonaws.com",
+        "Accept-Encoding": "gzip, deflate, br",
+        "dnt": "1",
+        "X-Forwarded-Port": "443",
+        "X-Amzn-Trace-Id": "Root=1-5c37eea7-7c1cb2771f961e77701ef3d8",
+        "Via": "2.0 3e36996f3126f4ccf3b9653b3e092683.cloudfront.net (CloudFront)",
+        "X-Amz-Cf-Id": "QDJc2ImOowL6bd1qzD6Gqaq-c2bVvuhkMKyWikAGvWU9257gRDgm3w==",
+        "X-Forwarded-For": "169.234.62.100, 52.46.60.67",
+        "content-type": "application/json",
+        "Accept-Language": "en-US,en;q=0.5",
+        "CloudFront-Is-Desktop-Viewer": "true"
+    },
+    "pathParameters": null,
+    "isBase64Encoded": false,
+    "multiValueQueryStringParameters": null,
+    "multiValueHeaders": {
+        "Accept": [
+            "application/json"
+        ],
+        "CloudFront-Viewer-Country": [
+            "US"
+        ],
+        "CloudFront-Forwarded-Proto": [
+            "https"
+        ],
+        "CloudFront-Is-Tablet-Viewer": [
+            "false"
+        ],
+        "origin": [
+            "http://colorblind-message-encrypter.s3-website-us-west-2.amazonaws.com"
+        ],
+        "CloudFront-Is-Mobile-Viewer": [
+            "false"
+        ],
+        "Referer": [
+            "http://colorblind-message-encrypter.s3-website-us-west-2.amazonaws.com/"
+        ],
+        "User-Agent": [
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0"
+        ],
+        "X-Forwarded-Proto": [
+            "https"
+        ],
+        "CloudFront-Is-SmartTV-Viewer": [
+            "false"
+        ],
+        "Host": [
+            "tbrz9z67od.execute-api.us-west-2.amazonaws.com"
+        ],
+        "Accept-Encoding": [
+            "gzip, deflate, br"
+        ],
+        "dnt": [
+            "1"
+        ],
+        "X-Forwarded-Port": [
+            "443"
+        ],
+        "X-Amzn-Trace-Id": [
+            "Root=1-5c37eea7-7c1cb2771f961e77701ef3d8"
+        ],
+        "Via": [
+            "2.0 3e36996f3126f4ccf3b9653b3e092683.cloudfront.net (CloudFront)"
+        ],
+        "X-Amz-Cf-Id": [
+            "QDJc2ImOowL6bd1qzD6Gqaq-c2bVvuhkMKyWikAGvWU9257gRDgm3w=="
+        ],
+        "X-Forwarded-For": [
+            "169.234.62.100, 52.46.60.67"
+        ],
+        "content-type": [
+            "application/json"
+        ],
+        "Accept-Language": [
+            "en-US,en;q=0.5"
+        ],
+        "CloudFront-Is-Desktop-Viewer": [
+            "true"
+        ]
+    },
+    "requestContext": {
+        "resourceId": "bqd4gs",
+        "resourcePath": "/encrypttext",
+        "httpMethod": "POST",
+        "extendedRequestId": "TUI6LFndPHcF64g=",
+        "requestTime": "11/Jan/2019:01:17:27 +0000",
+        "path": "/prod/encrypttext",
+        "accountId": "947467167837",
+        "protocol": "HTTP/1.1",
+        "stage": "prod",
+        "domainPrefix": "tbrz9z67od",
+        "requestTimeEpoch": 1547169447503,
+        "requestId": "a8c32ee2-153e-11e9-8cb8-a961827b4d22",
+        "identity": {
+            "cognitoIdentityPoolId": null,
+            "accountId": null,
+            "cognitoIdentityId": null,
+            "caller": null,
+            "sourceIp": "169.234.62.100",
+            "accessKey": null,
+            "cognitoAuthenticationType": null,
+            "cognitoAuthenticationProvider": null,
+            "userArn": null,
+            "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0",
+            "user": null
+        },
+        "domainName": "tbrz9z67od.execute-api.us-west-2.amazonaws.com",
+        "apiId": "tbrz9z67od"
+    },
+    "resource": "/encrypttext",
+    "httpMethod": "POST",
+    "queryStringParameters": null,
+    "stageVariables": null,
+    "body": "{\"text\":\"hello\"}"
+}

@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Creates an Ishihara Test plate from parameters
+Resources:
+  RequestPlate:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ColorblindMessageEncrypter.CreatePlateHandler::handleRequest
+      Runtime: java8
+      AutoPublishAlias: live
+      CodeUri: ./target/output.jar
+      Events:
+        ColorBlindMessageEncrypter:
+          Type: Api
+          Properties:
+            Path: /TimeResource
+            Method: post
+      Environment:
+        Variables:
+          S3_BUCKET: colorblind-message-encrypter-plates
