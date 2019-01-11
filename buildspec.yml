@@ -10,7 +10,7 @@ phases:
      - ls -l
  build:
    commands:
-     - mvn package shade:shade > /dev/null
+     - mvn package shade:shade
  post_build:
    commands:
      - mv target/colorblind-message-encrypter-createplatehandler-1.0-SNAPSHOT.jar target/output.jar

@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.Base64;
+import java.security.MessageDigest;
 
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
@@ -91,9 +92,9 @@ public class CreatePlateHandler implements RequestStreamHandler {
         //Create image
         IshiharaGenerator ishiharaGenerator = new IshiharaGenerator();
         BufferedImage image = ishiharaGenerator.CreateImage(params.text, new Rectangle(params.requestedWidth, params.requestedHeight), false, 4);
-        String dstKey =
-                Base64.getEncoder().withoutPadding().encodeToString(params.text.getBytes());
-        dstKey = dstKey.substring(0, min(128, dstKey.length()));
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
+        String dstKey = Base64.getEncoder().withoutPadding().encodeToString(hash);
 
         //Check database if this image has already been generated
 
