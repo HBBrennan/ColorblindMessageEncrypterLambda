@@ -3,7 +3,6 @@ package ColorblindMessageEncrypter;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.Base64;
 
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
@@ -19,8 +18,6 @@ import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
 import javax.imageio.ImageIO;
-
-import static java.lang.Math.min;
 
 public class CreatePlateHandler implements RequestStreamHandler {
     JSONParser parser = new JSONParser();
@@ -60,7 +57,7 @@ public class CreatePlateHandler implements RequestStreamHandler {
                 JSONObject body = (JSONObject)parser.parse((String)event.get("body"));
                 if (body.get("text") != null) {
                     params.text = (String)body.get("text");
-                    logger.log("Found string: " + params.text);
+                    logger.log("Found string: " + params.text + "\n");
                 }
             }
 
@@ -83,11 +80,12 @@ public class CreatePlateHandler implements RequestStreamHandler {
     }
 
     void handleFailedParse(LambdaLogger logger, JSONObject responseJson) {
-
+        logger.log("Failed to Parse Request\n");
     }
 
     void handleSuccessfulParse(LambdaLogger logger, JSONObject responseJson, IshiharaParams params)
     {
+        logger.log("Successfully Parsed Request\n");
         //Create image
         IshiharaGenerator ishiharaGenerator = new IshiharaGenerator();
         BufferedImage image = ishiharaGenerator.CreateImage(params.text, new Rectangle(params.requestedWidth, params.requestedHeight), false, 4);
@@ -112,11 +110,12 @@ public class CreatePlateHandler implements RequestStreamHandler {
         JSONObject responseBody = new JSONObject();
         try {
             s3Client.putObject(DST_BUCKET, dstKey, is, meta);
-            logger.log("Successfully created Ishihara plate with uploaded to " + DST_BUCKET + "/" + dstKey + "\n");
+            logger.log("Successfully created Ishihara plate\n");
             String resultUrl = "https://s3-us-west-2.amazonaws.com/"
                     + DST_BUCKET
                     + "/"
                     + dstKey;
+            logger.log(resultUrl + "\n");
             responseBody.put("image", resultUrl);
         }
         catch (SdkClientException e) {
@@ -132,5 +131,6 @@ public class CreatePlateHandler implements RequestStreamHandler {
         responseJson.put("headers", headerJson);
         responseJson.put("body", responseBody.toString());
         responseJson.put("Content-Type", "application/json");
+        logger.log("Finished Creating Response JSON: \n" + responseJson.toString() + "\n");
     }
 }

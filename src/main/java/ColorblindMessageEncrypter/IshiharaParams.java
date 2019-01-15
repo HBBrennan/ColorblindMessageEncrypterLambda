@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public @Data
 class IshiharaParams {
-    public String text;
+    public String text = null;
     public int requestedWidth = 1920;
     public int requestedHeight = 1080;
     public int colorSetting = 0;
