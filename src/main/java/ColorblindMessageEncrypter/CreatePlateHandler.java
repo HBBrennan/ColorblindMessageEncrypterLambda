@@ -3,6 +3,7 @@ package ColorblindMessageEncrypter;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import javax.imageio.ImageIO;
 
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
@@ -17,15 +18,19 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 import org.json.simple.parser.JSONParser;
 
-import javax.imageio.ImageIO;
 
 public class CreatePlateHandler implements RequestStreamHandler {
     JSONParser parser = new JSONParser();
-    private String DST_BUCKET = System.getenv("S3_BUCKET");
+    private String DST_BUCKET = System.getenv("DST_BUCKET");
 
     public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {
         LambdaLogger logger = context.getLogger();
         logger.log("Loading Java Lambda handler of ColorblindMessageEncrypter\n");
+        if (DST_BUCKET == null || DST_BUCKET.isEmpty()) {
+            logger.log("Failed to load DST_BUCKET environment variable. Using Default\n");
+            DST_BUCKET = "colorblind-message-encrypter-plates";
+        }
+        logger.log("DST_BUCKET: " + DST_BUCKET + "\n");
 
         @Cleanup BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         JSONObject responseJson = new JSONObject();
@@ -74,22 +79,22 @@ public class CreatePlateHandler implements RequestStreamHandler {
             handleFailedParse(logger, responseJson);
         }
 
-        logger.log(responseJson.toJSONString());
+        logger.log("Response JSON:\n" +  responseJson.toJSONString() + "\n");
         @Cleanup OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
         writer.write(responseJson.toJSONString());
     }
 
-    void handleFailedParse(LambdaLogger logger, JSONObject responseJson) {
+    private void handleFailedParse(LambdaLogger logger, JSONObject responseJson) {
         logger.log("Failed to Parse Request\n");
     }
 
-    void handleSuccessfulParse(LambdaLogger logger, JSONObject responseJson, IshiharaParams params)
+    private void handleSuccessfulParse(LambdaLogger logger, JSONObject responseJson, IshiharaParams params)
     {
         logger.log("Successfully Parsed Request\n");
         //Create image
         IshiharaGenerator ishiharaGenerator = new IshiharaGenerator();
         BufferedImage image = ishiharaGenerator.CreateImage(params.text, new Rectangle(params.requestedWidth, params.requestedHeight), false, 4);
-        String dstKey = org.apache.commons.codec.digest.DigestUtils.sha256Hex(params.text);
+        String dstKey = org.apache.commons.codec.digest.DigestUtils.sha256Hex(params.text) + ".png";
 
         //Check database if this image has already been generated
 
@@ -131,6 +136,5 @@ public class CreatePlateHandler implements RequestStreamHandler {
         responseJson.put("headers", headerJson);
         responseJson.put("body", responseBody.toString());
         responseJson.put("Content-Type", "application/json");
-        logger.log("Finished Creating Response JSON: \n" + responseJson.toString() + "\n");
     }
 }

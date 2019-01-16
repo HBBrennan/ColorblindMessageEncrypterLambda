@@ -23,6 +23,25 @@ Parameters:
       Default: "RequestPlateLambda"
 
 Resources:
+  PlateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "colorblind-message-encrypter-plates"
+
+  BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: 2012-10-17
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action: 's3:GetObject'
+              Resource: !Join ['/', [ !GetAtt PlateBucket.Arn, '*' ] ]
+        Bucket: !Ref PlateBucket
+
   apiGateway:
     Type: "AWS::ApiGateway::RestApi"
     Properties:
@@ -73,7 +92,7 @@ Resources:
       Role: !GetAtt "lambdaIAMRole.Arn"
       Environment:
         Variables:
-          S3_BUCKET: !Ref PlateBucket
+          DST_BUCKET: !Ref "PlateBucket"
 
   lambdaApiGatewayInvoke:
     Type: "AWS::Lambda::Permission"
@@ -82,11 +101,6 @@ Resources:
       FunctionName: !GetAtt "lambdaFunction.Arn"
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/*/POST/"
-
-  PlateBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: "colorblind-message-encrypter-plates"
 
   lambdaIAMRole:
     Type: "AWS::IAM::Role"
@@ -110,8 +124,7 @@ Resources:
                   - "s3:PutObject"
                 Effect: "Allow"
                 Resource:
-                  - !Ref PlateBucket
-            Statement:
+                  - !GetAtt PlateBucket.Arn
               - Action:
                   - "logs:CreateLogGroup"
                   - "logs:CreateLogStream"
