@@ -1,20 +1,129 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Creates an Ishihara Test plate from parameters
+Description: "Colorblind Message Encrypter Lambda and API Gateway"
+
+Globals:
+  Api:
+    # enable CORS; to make more specific, change the origin wildcard
+    # to a particular domain name, e.g. "'www.example.com'"
+    Cors:
+      AllowMethods: "'*'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
+
+Parameters:
+  apiGatewayStageName:
+    Type: "String"
+    AllowedPattern: "^[a-z0-9]+$"
+    Default: "prod"
+
+  lambdaFunctionName:
+      Type: "String"
+      AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$"
+      Default: "RequestPlateLambda"
+
 Resources:
-  RequestPlate:
+  apiGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: "ColorBlindMessageEncrypter"
+      Description: "ColorBlindMessage Encrypter API"
+
+  apiGatewayResource:
+    Type: "AWS::ApiGateway::Resource"
+    Properties:
+      ParentId: !GetAtt "apiGateway.RootResourceId"
+      PathPart: "requestplate"
+      RestApiId: !Ref "apiGateway"
+
+  apiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      OperationName: "RequestPlate"
+      ApiKeyRequired: False
+      AuthorizationType: "NONE"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS"
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt "lambdaFunction.Arn"
+      ResourceId: !Ref apiGatewayResource
+      RestApiId: !Ref "apiGateway"
+
+  apiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - "apiGatewayMethod"
+    Properties:
+      RestApiId: !Ref "apiGateway"
+      StageName: !Ref "apiGatewayStageName"
+
+  lambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Description: "Lambda to create Ishihara test plate from message"
       Handler: ColorblindMessageEncrypter.CreatePlateHandler::handleRequest
       Runtime: java8
       AutoPublishAlias: live
+      MemorySize: 512
       CodeUri: ./target/output.jar
-      Events:
-        ColorBlindMessageEncrypter:
-          Type: Api
-          Properties:
-            Path: /TimeResource
-            Method: post
+      FunctionName: !Ref "lambdaFunctionName"
+      Role: !GetAtt "lambdaIAMRole.Arn"
       Environment:
         Variables:
-          S3_BUCKET: colorblind-message-encrypter-plates
+          S3_BUCKET: !Ref PlateBucket
+
+  lambdaApiGatewayInvoke:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt "lambdaFunction.Arn"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/*/POST/"
+
+  PlateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "colorblind-message-encrypter-plates"
+
+  lambdaIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+      Policies:
+        - PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action:
+                  - "s3:GetObject"
+                  - "s3:DeleteObject"
+                  - "s3:PutObject"
+                Effect: "Allow"
+                Resource:
+                  - !Ref PlateBucket
+            Statement:
+              - Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Effect: "Allow"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${lambdaFunctionName}:*"
+          PolicyName: "lambda"
+
+Outputs:
+  apiGatewayInvokeURL:
+    Value: !Sub "https://${apiGateway}.execute-api.${AWS::Region}.amazonaws.com/${apiGatewayStageName}"
+
+  lambdaArn:
+    Value: !GetAtt "lambdaFunction.Arn"
