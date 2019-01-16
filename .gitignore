@@ -72,5 +72,4 @@ target/
 .factorypath
 .project
 .settings/
-outputSamTemplate.yaml
-
+output.yml

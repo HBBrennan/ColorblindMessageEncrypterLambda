@@ -26,3 +26,4 @@ deploy: $(TARGET)
 
 clean:
 	rm -f output.yml
+	rm -f $(TARGET)
