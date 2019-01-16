@@ -1,28 +1,3 @@
 {
-    "path": "/encrypttext",
-    "headers": {
-        "Accept": "application/json"
-    },
-    "pathParameters": null,
-    "isBase64Encoded": false,
-    "multiValueHeaders": {
-        "Accept": [
-            "application/json"
-        ]
-    },
-    "requestContext": {
-        "resourceId": "bqd4gs",
-        "resourcePath": "/encrypttext",
-        "httpMethod": "POST",
-        "requestTime": "11/Jan/2019:01:17:27 +0000",
-        "path": "/prod/encrypttext",
-        "accountId": "947467167837",
-        "protocol": "HTTP/1.1",
-        "stage": "prod"
-    },
-    "resource": "/encrypttext",
-    "httpMethod": "POST",
-    "queryStringParameters": null,
-    "stageVariables": null,
-    "body": "{\"text\":\"hello\"}"
+    "body": "{\"text\":\"Hello\"}"
 }
