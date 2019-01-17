@@ -44,9 +44,10 @@ Resources:
 
   apiGateway:
     Type: "AWS::ApiGateway::RestApi"
+    DependsOn: lambdaFunction
     Properties:
       Name: "ColorBlindMessageEncrypter"
-      Description: "ColorBlindMessage Encrypter API"
+      Description: "ColorBlind Message Encrypter API"
 
   apiGatewayResource:
     Type: "AWS::ApiGateway::Resource"
@@ -54,6 +55,36 @@ Resources:
       ParentId: !GetAtt "apiGateway.RootResourceId"
       PathPart: "requestplate"
       RestApiId: !Ref "apiGateway"
+
+  OptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      OperationName: "RequestPlateOptions"
+      AuthorizationType: NONE
+      RestApiId: !Ref apiGateway
+      ResourceId: !Ref apiGatewayResource
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
 
   apiGatewayMethod:
     Type: AWS::ApiGateway::Method
@@ -68,13 +99,26 @@ Resources:
         Uri: !Sub
           - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
           - lambdaArn: !GetAtt "lambdaFunction.Arn"
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
       ResourceId: !Ref apiGatewayResource
       RestApiId: !Ref "apiGateway"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
 
   apiGatewayDeployment:
     Type: "AWS::ApiGateway::Deployment"
     DependsOn:
       - "apiGatewayMethod"
+      - "OptionsMethod"
     Properties:
       RestApiId: !Ref "apiGateway"
       StageName: !Ref "apiGatewayStageName"
@@ -87,6 +131,7 @@ Resources:
       Runtime: java8
       AutoPublishAlias: live
       MemorySize: 512
+      Timeout: 30
       CodeUri: ./target/output.jar
       FunctionName: !Ref "lambdaFunctionName"
       Role: !GetAtt "lambdaIAMRole.Arn"
@@ -100,7 +145,7 @@ Resources:
       Action: "lambda:InvokeFunction"
       FunctionName: !GetAtt "lambdaFunction.Arn"
       Principal: "apigateway.amazonaws.com"
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/*/POST/"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apiGateway}/*/POST/*"
 
   lambdaIAMRole:
     Type: "AWS::IAM::Role"
@@ -124,7 +169,7 @@ Resources:
                   - "s3:PutObject"
                 Effect: "Allow"
                 Resource:
-                  - !GetAtt PlateBucket.Arn
+                  - !Sub "${PlateBucket.Arn}/*"
               - Action:
                   - "logs:CreateLogGroup"
                   - "logs:CreateLogStream"
