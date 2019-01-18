@@ -69,7 +69,11 @@ public class CreatePlateHandler implements RequestStreamHandler {
 
         JSONObject responseHeaderJson = new JSONObject();
 
-        if (params.text != null && params.text != "") {
+        if (params.text != null) {
+            if (params.text.isEmpty()) {
+                responseJson.put("statusCode", "400");
+                responseHeaderJson.put("exception", "Error: Empty Text");
+            }
             boolean result = handleSuccessfulParse(logger, responseJson, responseBodyJson, params);
             if (result) {
                 responseJson.put("statusCode", "201");
@@ -77,7 +81,7 @@ public class CreatePlateHandler implements RequestStreamHandler {
                 responseJson.put("statusCode", "500");
             }
         } else {
-            responseHeaderJson.put("exception", "Failed to find text to encrypt in body.");
+            responseHeaderJson.put("exception", "Failed to find \"text\" in body.");
             responseJson.put("statusCode", "400");
         }
 

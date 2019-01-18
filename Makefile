@@ -13,13 +13,14 @@ $(TARGET): $(SRC)
 	mv target/colorblind-message-encrypter-createplatehandler-1.0-SNAPSHOT.jar $(TARGET)
 
 test: $(TARGET)
+	export TMPDIR=/c/tmp # Needed to work on Windoze. Set root to /mnt/ in wsl conf
 	sam local invoke -e test.json --region us-west-2
 
 # Attach debugger to process for debugging
 debug: $(TARGET)
 	sam local invoke -e test.json -d 5858 --region us-west-2 --debug
 
-# Deploy Locally
+# Deploy To Lambda
 deploy: $(TARGET)
 	aws cloudformation package --template-file template.yml --s3-bucket colorblind-message-encrypter-lambda --output-template-file output.yml
 	sam deploy --template-file ./output.yml --stack-name ColorBlindStack --capabilities CAPABILITY_IAM
