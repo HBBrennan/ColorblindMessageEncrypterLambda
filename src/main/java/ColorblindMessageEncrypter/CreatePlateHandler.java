@@ -34,6 +34,7 @@ public class CreatePlateHandler implements RequestStreamHandler {
 
         @Cleanup BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         JSONObject responseJson = new JSONObject();
+        JSONObject responseBodyJson = new JSONObject();
         IshiharaParams params = new IshiharaParams();
         JSONObject event = null;
         try {
@@ -60,37 +61,39 @@ public class CreatePlateHandler implements RequestStreamHandler {
             }
 
         } catch(ParseException pex) {
-            responseJson.put("statusCode", "400");
-            responseJson.put("exception", pex);
+            responseBodyJson.put("statusCode", "400");
+            responseBodyJson.put("exception", pex);
             if (event != null)
-                responseJson.put("input", event.toJSONString());
+                responseBodyJson.put("input", event.toJSONString());
         }
+
+        JSONObject responseHeaderJson = new JSONObject();
 
         if (params.text != null && params.text != "") {
-            handleSuccessfulParse(logger, responseJson, params);
+            boolean result = handleSuccessfulParse(logger, responseJson, responseBodyJson, params);
+            if (result) {
+                responseJson.put("statusCode", "201");
+            } else {
+                responseJson.put("statusCode", "500");
+            }
         } else {
-            logger.log("Failed to Parse Request\n");
-            handleError(logger, responseJson, "Failed to find text to encrypt in body.");
+            responseHeaderJson.put("exception", "Failed to find text to encrypt in body.");
+            responseJson.put("statusCode", "400");
         }
 
-        JSONObject headerJson = new JSONObject();
-        headerJson.put("Access-Control-Allow-Origin", "*");
+        responseHeaderJson.put("Access-Control-Allow-Origin", "*");
         responseJson.put("isBase64Encoded", false);
-        responseJson.put("statusCode", "201");
-        responseJson.put("headers", headerJson);
-        responseJson.put("body", responseJson.toString());
         responseJson.put("Content-Type", "application/json");
 
-        logger.log("Response JSON:\n" +  responseJson.toJSONString() + "\n");
+        responseJson.put("headers", responseHeaderJson);
+        responseJson.put("body", responseBodyJson);
+
+        logger.log(responseJson.toJSONString());
         @Cleanup OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
         writer.write(responseJson.toJSONString());
     }
 
-    private void handleError(LambdaLogger logger, JSONObject responseJson, String error) {
-        responseJson.put("Error", error);
-    }
-
-    private void handleSuccessfulParse(LambdaLogger logger, JSONObject responseJson, IshiharaParams params)
+    private boolean handleSuccessfulParse(LambdaLogger logger, JSONObject responseJson, JSONObject responseBodyJson, IshiharaParams params)
     {
         logger.log("Successfully Parsed Request\n");
         //Create image
@@ -107,13 +110,14 @@ public class CreatePlateHandler implements RequestStreamHandler {
             ImageIO.write(image, "png", os);
         } catch (IOException e) {
             logger.log(e.toString());
+            responseJson.put("exception", e);
+            return false;
         }
         InputStream is = new ByteArrayInputStream(os.toByteArray());
         ObjectMetadata meta = new ObjectMetadata();
         meta.setContentLength((long)os.size());
         meta.setContentType("image/png");
 
-        JSONObject responseBody = new JSONObject();
         try {
             s3.putObject(DST_BUCKET, dstKey, is, meta);
             logger.log("Successfully uploaded Ishihara plate\n");
@@ -122,11 +126,13 @@ public class CreatePlateHandler implements RequestStreamHandler {
                     + "/"
                     + dstKey;
             logger.log("Uploaded to: " + resultUrl + "\n");
-            responseBody.put("image", resultUrl);
+            responseBodyJson.put("image", resultUrl);
+            return true;
         }
         catch (SdkClientException e) {
             logger.log("Failed to upload image SDKClientException: " + e + "\n");
-            handleError(logger, responseJson, "Failed to upload image to S3");
+            responseJson.put("exception", e);
+            return false;
         }
     }
 }
