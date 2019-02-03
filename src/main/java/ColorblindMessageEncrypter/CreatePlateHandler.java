@@ -3,6 +3,7 @@ package ColorblindMessageEncrypter;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import javax.imageio.ImageIO;
 
 import com.amazonaws.SdkClientException;
@@ -35,6 +36,7 @@ public class CreatePlateHandler implements RequestStreamHandler {
         @Cleanup BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         JSONObject responseJson = new JSONObject();
         JSONObject responseBodyJson = new JSONObject();
+        JSONObject responseHeaderJson = new JSONObject();
         IshiharaParams params = new IshiharaParams();
         JSONObject event = null;
         try {
@@ -50,6 +52,10 @@ public class CreatePlateHandler implements RequestStreamHandler {
 
             if (event.get("headers") != null) {
                 JSONObject hps = (JSONObject)event.get("headers");
+                if (hps.get("Content-Type") != null && !((String)hps.get("Content-Type")).equals("application/json")) {
+                    responseJson.put("statusCode", "415");
+                    responseHeaderJson.put("exception", "Wrong payload content type. Should be application/json");
+                }
             }
 
             if (event.get("body") != null) {
@@ -57,9 +63,23 @@ public class CreatePlateHandler implements RequestStreamHandler {
                 if (body.get("text") != null) {
                     params.text = (String)body.get("text");
                     logger.log("Found string: " + params.text + "\n");
+                    if (params.text.isEmpty()) {
+                        responseJson.put("statusCode", "400");
+                        responseHeaderJson.put("exception", "Error: Empty Text");
+                    } else {
+                        if (handleSuccessfulParse(logger, responseJson, responseBodyJson, params)) {
+                            responseJson.put("statusCode", "201");
+                        } else {
+                            responseJson.put("statusCode", "500");
+                        }
+                    }
+                } else {
+                    responseHeaderJson.put("exception", "Failed to find \"text\" in body.");
+                    responseJson.put("statusCode", "400");
                 }
             }
-
+            responseJson.put("statusCode", "400");
+            responseHeaderJson.put("exception", "Error: Text not found in body");
         } catch(ParseException pex) {
             responseBodyJson.put("statusCode", "400");
             responseBodyJson.put("exception", pex);
@@ -67,33 +87,15 @@ public class CreatePlateHandler implements RequestStreamHandler {
                 responseBodyJson.put("input", event.toJSONString());
         }
 
-        JSONObject responseHeaderJson = new JSONObject();
-
-        if (params.text != null) {
-            if (params.text.isEmpty()) {
-                responseJson.put("statusCode", "400");
-                responseHeaderJson.put("exception", "Error: Empty Text");
-            }
-            boolean result = handleSuccessfulParse(logger, responseJson, responseBodyJson, params);
-            if (result) {
-                responseJson.put("statusCode", "201");
-            } else {
-                responseJson.put("statusCode", "500");
-            }
-        } else {
-            responseHeaderJson.put("exception", "Failed to find \"text\" in body.");
-            responseJson.put("statusCode", "400");
-        }
 
         responseHeaderJson.put("Access-Control-Allow-Origin", "*");
         responseJson.put("isBase64Encoded", false);
-        responseJson.put("Content-Type", "application/json");
 
         responseJson.put("headers", responseHeaderJson);
-        responseJson.put("body", responseBodyJson);
+        responseJson.put("body", responseBodyJson.toJSONString());
 
         logger.log(responseJson.toJSONString());
-        @Cleanup OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
+        @Cleanup OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
         writer.write(responseJson.toJSONString());
     }
 
