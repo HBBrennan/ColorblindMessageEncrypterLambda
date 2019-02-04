@@ -5,10 +5,10 @@ import java.util.ArrayList;
 
 public @Data
 class IshiharaParams {
-    public String text = null;
-    public int requestedWidth = 1920;
-    public int requestedHeight = 1080;
-    public int colorSetting = 0;
-    public ArrayList<String> insideColors;
-    public ArrayList<String> outsideColors;
+	private String text = null;
+	private int requestedWidth = 1920;
+	private int requestedHeight = 1080;
+	private int colorSetting = 0;
+	private ArrayList<String> insideColors;
+	private ArrayList<String> outsideColors;
 }
