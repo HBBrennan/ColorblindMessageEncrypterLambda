@@ -78,8 +78,6 @@ public class CreatePlateHandler implements RequestStreamHandler {
 					responseJson.put("statusCode", "400");
 				}
 			}
-			responseJson.put("statusCode", "400");
-			responseHeaderJson.put("exception", "Error: Text not found in body");
 		} catch(ParseException pex) {
 			responseBodyJson.put("statusCode", "400");
 			responseBodyJson.put("exception", pex);
@@ -104,7 +102,7 @@ public class CreatePlateHandler implements RequestStreamHandler {
 		logger.log("Successfully Parsed Request\n");
 		//Create image
 		IshiharaGenerator ishiharaGenerator = new IshiharaGenerator();
-		BufferedImage image = ishiharaGenerator.CreateImage(params.getText(), new Rectangle(params.getRequestedWidth(), params.getRequestedHeight()), false, 4);
+		BufferedImage image = ishiharaGenerator.CreateImage(params.getText(), new Rectangle(params.getRequestedWidth(), params.getRequestedHeight()), false, 1);
 		String dstKey = org.apache.commons.codec.digest.DigestUtils.sha256Hex(params.getText()) + ".png";
 
 		//TODO Check database if this image has already been generated

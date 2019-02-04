@@ -18,7 +18,7 @@ test: $(TARGET)
 
 # Attach debugger to process for debugging
 debug: $(TARGET)
-	sam local invoke -e test.json -d 5858 --region us-west-2 --debug
+	sam local invoke -e test.json -d 5858 --region us-west-2
 
 # Deploy To Lambda
 deploy: $(TARGET)

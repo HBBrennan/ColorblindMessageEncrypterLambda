@@ -1,13 +1,16 @@
 package ColorblindMessageEncrypter;
 
 import lombok.NonNull;
+import lombok.val;
 
 import java.util.*;
 import java.awt.*;
 import java.awt.image.*;
 import java.awt.FontMetrics;
 
- public class IshiharaGenerator
+import static java.awt.image.BufferedImage.TYPE_INT_RGB;
+
+class IshiharaGenerator
 {
 	//Color hex code arrays
 	private String[] outsideC = {"#cf5f47", "#cf5f47", "#fd9500", "#ffd500", "#ee8568", "#ee8568", "#eebd7a"}; //Red, Red, Orange, Yellow, Light Red, Light Red, Tan
@@ -18,7 +21,7 @@ import java.awt.FontMetrics;
 
 	public BufferedImage CreateImage(@NonNull String msg, @NonNull Rectangle r, Boolean reverse, int scaling)
 	{
-		int maxSize = 6*scaling, minSize = 2*scaling;
+		int maxSize = 6, minSize = 2;
 		Font font = new Font("Roboto", Font.BOLD, 250*scaling);
 
 		int h = r.height;
@@ -76,18 +79,17 @@ import java.awt.FontMetrics;
 			maxWidth = metrics.stringWidth(row);
 		}
 
-		int canvasSizeX = maxWidth/scaling;
-		if (canvasSizeX > w)
-		canvasSizeX = w;
-		int canvasSizeY = textHeightScaled*(line+1)/scaling;
-		if (canvasSizeY > h)
-		canvasSizeY = h;
+		Rectangle canvasSize = new Rectangle( maxWidth/scaling, textHeightScaled*(line+1)/scaling);
+		if (canvasSize.width > w)
+			canvasSize.width = w;
+		if (canvasSize.height > h)
+			canvasSize.height = h;
 
-		BufferedImage img = new BufferedImage(canvasSizeX*scaling, canvasSizeY*scaling, BufferedImage.TYPE_INT_ARGB);
+		BufferedImage img = new BufferedImage(canvasSize.width * scaling, canvasSize.height * scaling, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D upscaledGraphics2d = img.createGraphics();
 
 		//Creating Circle object array uncolored for output
-		ArrayList<Circle> circles = makeCircles(canvasSizeX*scaling, canvasSizeY*scaling, maxSize, (double)minSize);
+		val circles = makeCircles(canvasSize, maxSize, (double)minSize);
 
 		//Anti Aliasing
 		upscaledGraphics2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -95,35 +97,25 @@ import java.awt.FontMetrics;
 		//Colors the circles based on whether or not their center intersects with string on the other image
 		if (reverse)
 		reverseColors();
-		try{
-		for (Circle circle : circles)
+		for (val circle : circles)
 		{
-			int color = text.getRGB(circle.getX(), circle.getY());
-			String[] colors = null;
-			if(color == 0)
-			{
-				colors = outsideC;
-			}
-			else
-			{
-				colors = insideC;
-			}
-			int num = rand.nextInt(colors.length);
-			upscaledGraphics2d.setColor(Color.decode(colors[num]));
-			if (circle.getRadius() > minSize)
-			upscaledGraphics2d.fillOval((int)(circle.getX()-circle.getRadius()), (int)(circle.getY()-circle.getRadius()), (int)(2*circle.getRadius()), (int)(2*circle.getRadius()));
+			int color = text.getRGB(circle.x*scaling, circle.y*scaling);
+			String[] colors = (color == 0 ? outsideC : insideC);
+			upscaledGraphics2d.setColor(Color.decode(colors[rand.nextInt(colors.length)]));
+			if (circle.value > minSize)
+			upscaledGraphics2d.fillOval(scaling*(int)Math.round(circle.x-circle.value),
+					scaling*(int)Math.round(circle.y-circle.value),
+					scaling*(int)Math.round(2*circle.value),
+					scaling*(int)Math.round(2*circle.value));
 		}
-		}
-		catch (Exception e)
-		{System.out.println (e);}
 		upscaledGraphics2d.dispose();
 
-		BufferedImage resizedImage = new BufferedImage(canvasSizeX, canvasSizeY, 1);
+		BufferedImage resizedImage = new BufferedImage(canvasSize.width, canvasSize.height, TYPE_INT_RGB);
 		Graphics2D g = resizedImage.createGraphics();
 		g.setPaint(Color.white);
-		g.fillRect(0, 0, canvasSizeX, canvasSizeY);
+		g.fillRect(0, 0, canvasSize.width, canvasSize.height);
 		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-		g.drawImage(img, 0, 0, canvasSizeX, canvasSizeY, (ImageObserver)null);
+		g.drawImage(img, 0, 0, canvasSize.width, canvasSize.height, null);
 		g.dispose();
 
 		return resizedImage;
@@ -138,22 +130,18 @@ import java.awt.FontMetrics;
 		insideC = temp;
 	}
 
-	private ArrayList<Circle> makeCircles(int canvasSizex, int canvasSizey, int maxSize, double minSize)
+	private ArrayList<PointQuadTree<Double>.PointQuadTreeNode> makeCircles(Rectangle canvasSize, int maxSize, double minSize)
 	{
-		//Declare random object to for randomized decrease of radius and randomized coordinates of each circle
-		Random rand = new Random();
-
-		//Create array of circle objects
-		ArrayList<Circle> circles = new ArrayList<Circle>();
-		double area = 0;
-		//Create circles with random coordinates and radiuses based on its distance from the closest circle
-		while (area < (.55*canvasSizex*canvasSizey))
+		val rand = new Random();
+		val circles = new PointQuadTree<Double>();
+		double area = 0.0;
+		//Create circles with random coordinates and radii with size based on its distance from the closest circle
+		while (area < (.55*canvasSize.width*canvasSize.height))
 		{
-			int x = rand.nextInt(canvasSizex);
-			int y = rand.nextInt(canvasSizey);
-			Circle circle = new Circle(maxSize, x, y);
+			int x = rand.nextInt(canvasSize.width);
+			int y = rand.nextInt(canvasSize.height);
 
-			double radius = shrink(circle, circles, maxSize);
+			double radius = shrink(x, y, circles, maxSize);
 
 			if (radius > 0)
 			{
@@ -161,36 +149,33 @@ import java.awt.FontMetrics;
 				radius *= multiplier;
 			}
 			if (radius < minSize)
-				radius = 0    ;
-			circle.setRadius(radius);
-			if (radius > 0)
-			{
-				area += Math.PI*radius*radius;
-				circles.add(circle);
-			}
+				continue;
+
+			area += Math.PI*radius*radius;
+			circles.insert(x, y, radius);
 		}
-		return circles;
+		return circles.toList();
 	}
 
 
-	private double shrink(Circle circle, ArrayList<Circle> circles, int maxSize)
+	/**
+	 *  Shrink the proposed radius to the maximum size without intersections based on nearby circles.
+	 * @param x The x coordinate of the proposed circle.
+	 * @param y The y cooordinate of the proposed circle
+	 * @param circles QuadTree containing all of our circles
+	 * @param maxSize The maximum/initial radius of a circle.
+	 * @return The maximum legal size for a circle at the proposed points.
+	 */
+	private double shrink(int x, int y, PointQuadTree<Double> circles, int maxSize)
 	{
 		double radius = maxSize;
-		for (Circle circle2 : circles)
-		{
-			double newRadius = circle.maxRadius(circle2);
-			if (newRadius < radius)
-			{
-				if (newRadius / circle2.getRadius() > .5)
-				{
-					radius = newRadius;
-				}
-				else
-				{
-					radius = 0;
-					break;
-				}
-			}
+		// All possible nearby nodes that could intersect with this new node.
+		val nearbyNodes = circles.query2D(new Rectangle(x - 2*maxSize, y - 2*maxSize, 4*maxSize, 4*maxSize));
+		for (val node : nearbyNodes) {
+			double dist = Math.sqrt(Math.pow(x-node.x, 2) + Math.pow(y-node.y, 2));
+			radius = Math.min(radius, dist-node.value);
+
+			if (radius < 0.0) return 0.0;
 		}
 		return radius;
 	}
