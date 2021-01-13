@@ -130,7 +130,7 @@ Resources:
       Handler: ColorblindMessageEncrypter.CreatePlateHandler::handleRequest
       Runtime: java8
       AutoPublishAlias: live
-      MemorySize: 512
+      MemorySize: 1536
       Timeout: 30
       CodeUri: ./target/output.jar
       FunctionName: !Ref "lambdaFunctionName"
